@@ -1,0 +1,274 @@
+#+TITLE Emacs Configuration File
+#+AUTHOR Adrian Burd
+
+* Introduction
+This file contains the configurations I use for Emacs. Some of the ideas
+for the structure of this configuration come from [[https://github.com/danielmai/.emacs.d][Daniel Mai]] who has also
+produced some [[https://www.youtube.com/watch?v=VIuOwIBL-ZU][YouTube]] videos showing how his set up works.
+
+The aim with my set up is to produce an easily maintainable set up that 
+provides documentation on what I am using, and that is easily portable 
+to the different computers I use. I don't use too 
+many packages, so I'm keeping everything in one configuration file, rather than
+splitting it up into several different files. Some of the things I use to make
+loading and configuration of packages easier include:
+
+** use-package
+[https://github.com/jwiegley/use-package][use-package]] makes the loading and configuration 
+of packages simpler. It was written by John Wiegley. This package  
+
+* Personal Information
+Here I set the variables declaring who I am as well as setting things like
+email addresses. *These need to be filled in when installing*.
+
+#+begin_src emacs-lisp
+(setq user-full-name " "
+      user-mail-address " ")
+#+end_src
+
+* Window Settings
+Here I set the configuration of the window. This includes the size of the 
+frame as well as things like the header across the top and the fonts to be used.
+
+The first think I want to do is to display the time, line numbers, and column
+numbers at the bottom of the window
+
+#+BEGIN_SRC emacs-lisp
+(display-time)
+(line-number-mode 1)
+(column-number-mode 1)
+#+END_SRC
+
+And now I set the size of the window and it's default position.
+
+#+BEGIN_SRC emacs-lisp
+(setq initial-frame-alist '((width . 250) (height . 65)))
+(set-frame-position (selected-frame) 180 40)
+#+END_SRC
+
+** Fonts
+A good place to look for fonts that work well with coding is 
+[[http://www.slant.co/topics/67/~programming-fonts][Slant]].
+
+Here are some options for fonts to load. The first is Adobe's 
+[[https://github.com/adobe-fonts/source-code-pro][Source Code Pro]] which is nice, thought it's useful to note that there are
+modified versions of this font. 
+
+#+BEGIN_SRC emacs-lisp
+(set-face-attribute 'default nil :foundry "apple" :family "Source Code Pro" :height 140)
+#+END_SRC
+
+Another good choice I want to play with (but have not set up yet) is 
+[[http://input.fontbureau.com][Input]].
+
+* Confiuration Settings
+Here, I want to set up the customize file to use its own file
+rather than putting the customizations into [[file:init.el][init.el]] (which I want
+to keep clean).
+
+#+BEGIN_SRC emacs-lisp
+(setq custom-file (expand-file-name "custom.el" user-emacs-directory))
+(load custom-file)
+#+END_SRC
+
+* Defaults for Ones Sanity
+Like any system, some of the default settings in Emacs can be annoying. 
+In this section, I change those Ifind most annoying to something a little more
+sanity-preserving.
+
+First, I don't need to type "yes" and "no", but only "y" and "n"
+#+BEGIN_SRC emacs-lisp
+(defalias 'yes-or-no-p 'y-or-n-p) 
+#+END_SRC
+
+Delete the highlighted region when typing, just as with most modern editors
+#+BEGIN_SRC emacs-lisp
+(delete-selection-mode t)
+#+END_SRC
+
+* Themes
+There are several possible themes that I might like to use. My most
+popular one is the Zenburn Theme
+
+** Zeburn Theme
+This is a low constrast theme that is easy on the eyes
+
+#+BEGIN_SRC emacs-lisp
+(use-package zenburn-theme
+  :ensure t)
+#+END_SRC
+* Dates and Times
+I like the ability to time-stamp various files (such as time-stamping org files, html
+files etc). For this, I switch on the time-stamping facility. For this to work, the 
+time stamp must be in the first 8 ilnes of the file and must start with the format
+
+==Time-stamp: <> ==
+
+
+#+BEGIN_SRC emacs-lisp
+(setq time-stamp-pattern nil)
+(add-hook 'before-save-hook 'time-stamp)
+#+END_SRC
+* Emacs Speaks Statistics
+This is an interface to the R language. 
+
+#+BEGIN_SRC emacs-lisp
+(use-package ess
+  :ensure t)
+#+END_SRC
+* LaTeX and Friends
+The best system for writing LaTeX files is AucTeX. For some reason
+I've not been able to quite fathom yet, Auctex doesn't like to be 
+loaded using the ==use-package=== function. So I've installed it using
+that function, and then I load it manually. This seems to work. 
+
+#+BEGIN_SRC emacs-lisp
+;;(use-package auctex
+;;  :ensure t)
+(load "auctex.el" nil t t)
+#+END_SRC
+
+Auctex formats things in what I consider to be an ugly way, using bold
+fonts for titles and headings etc. So first I'm going turn those off
+
+#+BEGIN_SRC emacs-lisp
+(setq font-latex-fontify-sectioning 'color)
+#+END_SRC
+
+Next, I want Autex to always produce pdf files
+
+#+BEGIN_SRC emacs-lisp
+(setq TeX-PDF-mode t)
+#+END_SRC
+
+Lastly, I want to view pdf files using Skim. To do this, I add a hook
+to allow Emacs to launch Skim.
+
+#+BEGIN_SRC emacs-lisp
+(add-hook 'LaTeX-mode-hook 'TeX-source-correlate-mode)
+(setq TeX-source-correlate-method 'synctex)
+(add-hook 'LaTeX-mode-hook
+        (lambda()
+         (add-to-list 'TeX-expand-list
+          '("%q" skim-make-url))))
+(defun skim-make-url () (concat
+        (TeX-current-line)
+        " "
+        (expand-file-name (funcall file (TeX-output-extension) t)
+         (file-name-directory (TeX-master-file)))
+        " "
+        (buffer-file-name)))
+
+(setq TeX-view-program-list
+       '(("Skim" "/Applications/Skim.app/Contents/SharedSupport/displayline %q")))
+
+(setq TeX-view-program-selection '((output-pdf "Skim")))
+
+#+END_SRC
+
+** RefTeX
+[[http://www.gnu.org/software/auctex/reftex.html][RefTeX]] is a package to support labels, references, citations, and indices in LaTeX
+documents. I first load the package, and then set a hook so RefTeX will be switched
+on for all LaTeX files processed using AucTeX. 
+
+#+BEGIN_SRC emacs-lisp
+(use-package reftex
+  :ensure t
+  :config
+  (add-hook 'LaTeX-mode-hook 'turn-on-reftex))
+#+END_SRC
+
+* Org Mode
+[[http://orgmode.org][Org mode]] is a first-stop place for a lot of note taking, agenda keeping etc. and
+generally organizing ones life in [[http://doc.norang.ca/org-mode.html][plain text]]. 
+
+** Key Bindings
+These are key bindings set up for org mode. 
+
+#+BEGIN_SRC emacs-lisp
+(global-set-key "\C-cl" 'org-store-link)
+(global-set-key "\C-ca" 'org-agenda)
+(global-set-key "\C-cb" 'org-iswitchb)
+#+END_SRC
+
+** Set up for TODOs
+TODO lists in org mode have a considerable amount of functionality built in. 
+Any heading that starts with the word TODO becomes a TODO item.
+I set the sequence of TODO status flags that can be cycled through; these can
+be cycled through using the C-c C-t key sequence and cycling through the options
+or by selecting one the short-cut keys listed below with the status. 
+
+#+BEGIN_SRC emacs-lisp
+(setq org-todo-keywords
+  '((sequence "TODO(t)" "IN PROGRESS(p)" "STUCK(s@/!)" "|" "DONE(d!)")))
+#+END_SRC
+
+I also want a time stamp added to completed TODO items:
+
+#+BEGIN_SRC emacs-lisp
+(setq org-log-done t)
+#+END_SRC
+
+** Babel
+Org mode files allow for literate programming. This means one can embed executable code
+within a written document; this configuration file is a perfect example, where the 
+Emacs Lisp code is embedded within the document. 
+
+Two very useful languages that can be used are [[http://ditaa.sourceforge.net][ditaa]] and [[http://plantuml.com][plantuml]]. The former is a great
+language for rapidly drawing simple diagrams. The second is for creating UML diagrams. These
+are both Java Extensions and so we have to let Emacs know where the the jar files are located.
+
+#+BEGIN_SRC emacs-lisp
+(setq org-ditaa-jar-path "/Users/adrian/Library/Java/Extensions/ditaa.jar")
+(setq org-plantuml-jar-path "/Users/adrian/Library/Java/Extensions/plantuml.jar")
+#+END_SRC
+
+Set up the languages that OrgBabel can understand. 
+
+#+BEGIN_SRC emacs-lisp
+(org-babel-do-load-languages
+  'org-babel-load-languages
+  '((R . t)
+    (ditaa . t)
+    (python . t)
+    (plantuml . t)
+    (matlab . t)))
+#+END_SRC
+
+** Export
+Org mode has the ability to understand and export LaTeX files. This is how 
+I keep many of my notes on things. To do this, we have to tell Emacs how to 
+export LaTeX commands.
+
+First, we load the exporter
+
+#+BEGIN_SRC emacs-lisp
+(use-package ox-latex
+  :ensure nil)
+#+END_SRC
+
+* Multimarkdown
+I also write a lot of files in [[http://fletcherpenney.net/multimarkdown/][Multimarkdown]] which I can then export to 
+a variety of different formats. 
+
+#+BEGIN_SRC emacs-lisp
+(use-package markdown-mode
+  :ensure t)
+#+END_SRC
+* Yasnippet
+[[https://github.com/capitaomorte/yasnippet][Yasnippet]] is a template system for Emacs and it's inspired by TextMate's syntax. 
+
+#+BEGIN_SRC emacs-lisp
+(use-package yasnippet
+  :ensure t
+  :config
+  (setq yas-snippet-dirs (concat user-emacs-directory "snippets"))
+  (yas-global-mode))
+#+END_SRC
+* Python
+This python mode plays nicely with iPython
+
+#+BEGIN_SRC emacs-lisp
+(use-package python-mode
+  :ensure t)
+#+END_SRC
